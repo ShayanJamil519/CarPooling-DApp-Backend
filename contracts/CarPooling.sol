@@ -23,6 +23,8 @@ contract CarPooling {
         closed
     }
 
+    address payable owner;
+
     /*structures*/
     struct Pooling {
         uint256 carpoolingId;
@@ -41,6 +43,10 @@ contract CarPooling {
         address user;
         uint8 nSlotBooked;
         bool isCompleted;
+    }
+
+    constructor() {
+        owner = payable(msg.sender);
     }
 
     /*mappings*/
@@ -103,7 +109,6 @@ contract CarPooling {
             revert CarPooling__NotEnoughSlots();
         }
 
-
         if (msg.value < idToPooling[_carpoolingId].price * _nSlotsToBook) {
             revert CarPooling__SendMoreFunds();
         }
@@ -126,5 +131,4 @@ contract CarPooling {
     /*getters*/
 }
 
-
-	// 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
+// 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
