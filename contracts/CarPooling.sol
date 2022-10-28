@@ -8,10 +8,10 @@ error CarPooling__AlreadyServing();
 error CarPooling__NotEnoughSlots();
 error CarPooling__BookingEnded();
 error CarPooling__SendMoreFunds();
+error CarPooling__AllSlotOccupied();
 
 contract CarPooling {
-
-using Counters for Counters.Counter;
+    using Counters for Counters.Counter;
     Counters.Counter private _carpoolingIds;
     Counters.Counter private _bookingIds;
 
@@ -21,7 +21,6 @@ using Counters for Counters.Counter;
     enum State {
         accepting,
         closed
-
     }
 
     /*structures*/
@@ -37,7 +36,7 @@ using Counters for Counters.Counter;
     }
 
     struct Booking {
-        uint256 carpoolingId;// To identify which carpooling is the booking being done on.
+        uint256 carpoolingId; // To identify which carpooling is the booking being done on.
         uint256 bookingId;
         address user;
         uint8 nSlotBooked;
@@ -53,11 +52,12 @@ using Counters for Counters.Counter;
     mapping(uint256 => Pooling) public idToPooling;
 
     Pooling[] public poolingServices;
-    mapping(uint256 => mapping(address => Booking)) public bookingsOfAUser ;
+    mapping(uint256 => mapping(address => Booking)) public bookingsOfAUser;
 
     /*functions*/
 
     // nazimabad, safoora, 4, 100000000000000
+    // 100000000000000
     function createCarPooling(
         string memory _origin,
         string memory _destination,
@@ -74,46 +74,57 @@ using Counters for Counters.Counter;
         // );
 
         _carpoolingIds.increment();
-         uint256 newCarpoolId = _carpoolingIds.current();
-        Pooling memory newPoolingService= Pooling(newCarpoolId, msg.sender, _origin, _destination, _slots, _price, block.timestamp, State.accepting);
+        uint256 newCarpoolId = _carpoolingIds.current();
+        Pooling memory newPoolingService = Pooling(
+            newCarpoolId,
+            msg.sender,
+            _origin,
+            _destination,
+            _slots,
+            _price,
+            block.timestamp,
+            State.accepting
+        );
+        idToPooling[newCarpoolId] = newPoolingService;
         poolingServices.push(newPoolingService);
         // pooling owner start his service
         isServing[msg.sender] = true;
     }
 
+    function BookCarpooling(uint256 _carpoolingId, uint8 _nSlotsToBook)
+        public
+        payable
+    {
+        if (idToPooling[_carpoolingId].slots <= 0) {
+            revert CarPooling__AllSlotOccupied();
+        }
 
-    function BookCarpooling(
-        uint256 _carpoolingId,
-        uint8 _nSlotsToBook)
-          public
-          payable
-            {
-            if(idToPooling[_carpoolingId].slots<_nSlotsToBook){
-                revert CarPooling__NotEnoughSlots();
-            }
-
-             if(idToPooling[_carpoolingId].carpoolingState==State.closed){
-                revert CarPooling__BookingEnded();
-            }
-
-             if(idToPooling[_carpoolingId].price*_nSlotsToBook<msg.value){
-                revert CarPooling__SendMoreFunds();
-            }
-
-            _bookingIds.increment();
-            uint256 newBookingId = _bookingIds.current();
-            bookingsOfAUser[_carpoolingId][msg.sender].carpoolingId = _carpoolingId;
-            bookingsOfAUser[_carpoolingId][msg.sender].bookingId = newBookingId;
-            bookingsOfAUser[_carpoolingId][msg.sender].user = msg.sender;
-            bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked = _nSlotsToBook;
-            bookingsOfAUser[_carpoolingId][msg.sender].isCompleted = false;
-            
+        if (idToPooling[_carpoolingId].slots < _nSlotsToBook) {
+            revert CarPooling__NotEnoughSlots();
+        }
 
 
+        if (msg.value < idToPooling[_carpoolingId].price * _nSlotsToBook) {
+            revert CarPooling__SendMoreFunds();
+        }
 
+        if (idToPooling[_carpoolingId].carpoolingState == State.closed) {
+            revert CarPooling__BookingEnded();
+        }
 
+        _bookingIds.increment();
+        uint256 newBookingId = _bookingIds.current();
+        bookingsOfAUser[_carpoolingId][msg.sender].carpoolingId = _carpoolingId;
+        bookingsOfAUser[_carpoolingId][msg.sender].bookingId = newBookingId;
+        bookingsOfAUser[_carpoolingId][msg.sender].user = msg.sender;
+        bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked += _nSlotsToBook;
+        bookingsOfAUser[_carpoolingId][msg.sender].isCompleted = false;
 
+        idToPooling[_carpoolingId].slots -= _nSlotsToBook;
     }
 
     /*getters*/
 }
+
+
+	// 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
