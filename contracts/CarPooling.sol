@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 
 /*errors*/
 error CarPooling__AlreadyServing();
+error CarPooling__NotEnoughSlots();
+error CarPooling__BookingEnded();
+error CarPooling__SendMoreFunds();
 
 contract CarPooling {
 
@@ -13,14 +16,12 @@ using Counters for Counters.Counter;
     Counters.Counter private _bookingIds;
 
     /* Variables  */
+    //No need of so many variables in enum State
+    // accepting and closed will do the job
     enum State {
-        // accepting,
-        // closed
-        pending,
-        booked,
-        validated,
-        paid,
-        conflicted
+        accepting,
+        closed
+
     }
 
     /*structures*/
@@ -36,8 +37,9 @@ using Counters for Counters.Counter;
     }
 
     struct Booking {
-        uint64 bookingId;
-        address payable user;
+        uint256 carpoolingId;// To identify which carpooling is the booking being done on.
+        uint256 bookingId;
+        address user;
         uint8 nSlotBooked;
         bool isCompleted;
     }
@@ -48,9 +50,10 @@ using Counters for Counters.Counter;
     mapping(address => bool) public isServing;
 
     // map pooling service with carpoolingId
-    mapping(uint256 => Pooling) private idToPooling;
+    mapping(uint256 => Pooling) public idToPooling;
 
     Pooling[] public poolingServices;
+    mapping(uint256 => mapping(address => Booking)) public bookingsOfAUser ;
 
     /*functions*/
 
@@ -72,14 +75,44 @@ using Counters for Counters.Counter;
 
         _carpoolingIds.increment();
          uint256 newCarpoolId = _carpoolingIds.current();
-        Pooling memory newPoolingService= Pooling(newCarpoolId, msg.sender, _origin, _destination, _slots, _price, block.timestamp, State.pending);
+        Pooling memory newPoolingService= Pooling(newCarpoolId, msg.sender, _origin, _destination, _slots, _price, block.timestamp, State.accepting);
         poolingServices.push(newPoolingService);
-
-
-
-
         // pooling owner start his service
         isServing[msg.sender] = true;
+    }
+
+
+    function BookCarpooling(
+        uint256 _carpoolingId,
+        uint8 _nSlotsToBook)
+          public
+          payable
+            {
+            if(idToPooling[_carpoolingId].slots<_nSlotsToBook){
+                revert CarPooling__NotEnoughSlots();
+            }
+
+             if(idToPooling[_carpoolingId].carpoolingState==State.closed){
+                revert CarPooling__BookingEnded();
+            }
+
+             if(idToPooling[_carpoolingId].price*_nSlotsToBook<msg.value){
+                revert CarPooling__SendMoreFunds();
+            }
+
+            _bookingIds.increment();
+            uint256 newBookingId = _bookingIds.current();
+            bookingsOfAUser[_carpoolingId][msg.sender].carpoolingId = _carpoolingId;
+            bookingsOfAUser[_carpoolingId][msg.sender].bookingId = newBookingId;
+            bookingsOfAUser[_carpoolingId][msg.sender].user = msg.sender;
+            bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked = _nSlotsToBook;
+            bookingsOfAUser[_carpoolingId][msg.sender].isCompleted = false;
+            
+
+
+
+
+
     }
 
     /*getters*/
