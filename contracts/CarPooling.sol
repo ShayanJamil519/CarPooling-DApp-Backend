@@ -1,23 +1,35 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.10;
 
+import "@openzeppelin/contracts/utils/Counters.sol";
+
 /*errors*/
 error CarPooling__AlreadyServing();
 
 contract CarPooling {
+
+using Counters for Counters.Counter;
+    Counters.Counter private _carpoolingIds;
+    Counters.Counter private _bookingIds;
+
     /* Variables  */
     enum State {
-        accepting,
-        closed
+        // accepting,
+        // closed
+        pending,
+        booked,
+        validated,
+        paid,
+        conflicted
     }
 
     /*structures*/
     struct Pooling {
-        uint64 carpoolingId;
-        address payable owner;
+        uint256 carpoolingId;
+        address owner;
         string origin;
         string destination;
-        uint8 slots;
+        uint256 slots;
         uint256 price;
         uint256 startTime;
         State carpoolingState;
@@ -38,6 +50,8 @@ contract CarPooling {
     // map pooling service with carpoolingId
     mapping(uint256 => Pooling) private idToPooling;
 
+    Pooling[] public poolingServices;
+
     /*functions*/
 
     // nazimabad, safoora, 4, 100000000000000
@@ -51,10 +65,18 @@ contract CarPooling {
             revert CarPooling__AlreadyServing();
         }
 
-        require(
-            msg.value == 1e14,
-            "to start service you need deposit 1e14 ethers collateral amount"
-        );
+        // require(
+        //     msg.value == 1e14,
+        //     "to start service you need deposit 1e14 ethers collateral amount"
+        // );
+
+        _carpoolingIds.increment();
+         uint256 newCarpoolId = _carpoolingIds.current();
+        Pooling memory newPoolingService= Pooling(newCarpoolId, msg.sender, _origin, _destination, _slots, _price, block.timestamp, State.pending);
+        poolingServices.push(newPoolingService);
+
+
+
 
         // pooling owner start his service
         isServing[msg.sender] = true;
