@@ -29,7 +29,7 @@ contract CarPooling {
     /*structures*/
     struct Pooling {
         uint256 carpoolingId;
-        address owner;
+        address payable owner;
         string origin;
         string destination;
         uint256 slots;
@@ -43,7 +43,6 @@ contract CarPooling {
         uint256 bookingId;
         address user;
         uint8 nSlotBooked;
-        uint8 nSlotCancel;
         uint256 amountRefund;
         bool isCompleted;
     }
@@ -87,7 +86,7 @@ contract CarPooling {
         uint256 newCarpoolId = _carpoolingIds.current();
         Pooling memory newPoolingService = Pooling(
             newCarpoolId,
-            msg.sender,
+            payable(msg.sender),
             _origin,
             _destination,
             _slots,
@@ -130,28 +129,25 @@ contract CarPooling {
         bookingsOfAUser[_carpoolingId][msg.sender].user = msg.sender;
         bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked += _nSlotsToBook;
 
-        // idToPooling[_carpoolingId].slots -= _nSlotsToBook;
-        // bookingsOfAUser[_carpoolingId][msg.sender].amountRefund -= idToPooling[_carpoolingId].price * _nSlotsToBook;
-
+        idToPooling[_carpoolingId].slots -= _nSlotsToBook;
         bookingsOfAUser[_carpoolingId][msg.sender].isCompleted = false;
+         (bool success, ) =  idToPooling[_carpoolingId].owner
+                .call{
+                value: msg.value
+            }("");
+            require(success, "Transfer failed");
 
         // idToPooling[_carpoolingId].slots -= _nSlotsToBook;
     }
 
 
-    function cancelBooking(uint256 _carpoolingId, uint8 _nSlotsToCancel) public {
-        
+    function cancelBooking(uint256 _carpoolingId, uint8 _nSlotsToCancel) public {        
         if(bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked <= 0){
             revert CarPooling__NoSlotBooked();
-        }
-     
-        bookingsOfAUser[_carpoolingId][msg.sender].nSlotCancel +=  _nSlotsToCancel;
+        }     
         bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked -= _nSlotsToCancel;
-
         idToPooling[_carpoolingId].slots += _nSlotsToCancel;
         bookingsOfAUser[_carpoolingId][msg.sender].amountRefund += idToPooling[_carpoolingId].price * _nSlotsToCancel;
-
-
     }
 
 
