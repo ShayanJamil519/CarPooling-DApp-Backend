@@ -9,6 +9,7 @@ error CarPooling__NotEnoughSlots();
 error CarPooling__BookingEnded();
 error CarPooling__SendMoreFunds();
 error CarPooling__AllSlotOccupied();
+error CarPooling__NoSlotBooked();
 
 contract CarPooling {
     using Counters for Counters.Counter;
@@ -42,6 +43,8 @@ contract CarPooling {
         uint256 bookingId;
         address user;
         uint8 nSlotBooked;
+        uint8 nSlotCancel;
+        uint256 amountRefund;
         bool isCompleted;
     }
 
@@ -57,7 +60,8 @@ contract CarPooling {
     // map pooling service with carpoolingId
     mapping(uint256 => Pooling) public idToPooling;
 
-    Pooling[] public poolingServices;
+    // Pooling[] public poolingServices;
+
     mapping(uint256 => mapping(address => Booking)) public bookingsOfAUser;
 
     /*functions*/
@@ -92,7 +96,9 @@ contract CarPooling {
             State.accepting
         );
         idToPooling[newCarpoolId] = newPoolingService;
-        poolingServices.push(newPoolingService);
+
+        // poolingServices.push(newPoolingService);
+
         // pooling owner start his service
         isServing[msg.sender] = true;
     }
@@ -123,10 +129,35 @@ contract CarPooling {
         bookingsOfAUser[_carpoolingId][msg.sender].bookingId = newBookingId;
         bookingsOfAUser[_carpoolingId][msg.sender].user = msg.sender;
         bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked += _nSlotsToBook;
+
+        // idToPooling[_carpoolingId].slots -= _nSlotsToBook;
+        // bookingsOfAUser[_carpoolingId][msg.sender].amountRefund -= idToPooling[_carpoolingId].price * _nSlotsToBook;
+
         bookingsOfAUser[_carpoolingId][msg.sender].isCompleted = false;
 
-        idToPooling[_carpoolingId].slots -= _nSlotsToBook;
+        // idToPooling[_carpoolingId].slots -= _nSlotsToBook;
     }
+
+
+    function cancelBooking(uint256 _carpoolingId, uint8 _nSlotsToCancel) public {
+        
+        if(bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked <= 0){
+            revert CarPooling__NoSlotBooked();
+        }
+     
+        bookingsOfAUser[_carpoolingId][msg.sender].nSlotCancel +=  _nSlotsToCancel;
+        bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked -= _nSlotsToCancel;
+
+        idToPooling[_carpoolingId].slots += _nSlotsToCancel;
+        bookingsOfAUser[_carpoolingId][msg.sender].amountRefund += idToPooling[_carpoolingId].price * _nSlotsToCancel;
+
+
+    }
+
+
+
+
+
 
     /*getters*/
 }
