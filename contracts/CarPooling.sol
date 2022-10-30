@@ -51,10 +51,14 @@ contract CarPooling {
         owner = payable(msg.sender);
     }
 
+    // Booking[] public confirmedBookings; //Keeps a track of current pending orders.
+    Booking[] public cancelledBookings;
+
     /*mappings*/
+    mapping (uint256=>Booking[]) public poolingToBooking;
 
     // check whether the current user is already giving service or not
-    mapping(address => bool) public isServing;
+    mapping(address => bool) private isServing;
 
     // map pooling service with carpoolingId
     mapping(uint256 => Pooling) public idToPooling;
@@ -137,6 +141,10 @@ contract CarPooling {
             }("");
             require(success, "Transfer failed");
 
+
+            // confirmedBookings.push(bookingsOfAUser[_carpoolingId][msg.sender]);
+            poolingToBooking[_carpoolingId].push(bookingsOfAUser[_carpoolingId][msg.sender]);
+
         // idToPooling[_carpoolingId].slots -= _nSlotsToBook;
     }
 
@@ -156,6 +164,25 @@ contract CarPooling {
 
 
     /*getters*/
+
+function getIsServing(address _carPooler) external view returns(bool){
+    return isServing[_carPooler];
+}
+
+function getIdToPooling(uint256 _carpoolId) external view returns(Pooling memory){
+    return idToPooling[_carpoolId];
+}
+
+function getBookingsOfAUser(uint256 _carpoolId, address _user) external view returns(Booking memory){
+    return bookingsOfAUser[_carpoolId][_user];
+}
+
+function getAllconfirmedBookings(uint256 _carpoolId) external view returns(Booking[] memory){
+
+      return poolingToBooking[_carpoolId];
+}
+
+
 }
 
 // 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
