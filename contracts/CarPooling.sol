@@ -72,7 +72,8 @@ contract CarPooling {
     /*functions*/
 
     // nazimabad, safoora, 4, 100000000000000
-    // 100000000000000
+    // collateral: 100000000000000
+    // 	0x20775d300BdE943Ac260995E977fb915fB01f399
     function createCarPooling(
         string memory _origin,
         string memory _destination,
@@ -83,10 +84,10 @@ contract CarPooling {
             revert CarPooling__AlreadyServing();
         }
 
-        // require(
-        //     msg.value == 1e14,
-        //     "to start service you need deposit 1e14 ethers collateral amount"
-        // );
+        require(
+            msg.value == 1e14,
+            "to start service you need deposit 1e14 ethers collateral amount"
+        );
 
         _carpoolingIds.increment();
         uint256 newCarpoolId = _carpoolingIds.current();
@@ -161,14 +162,13 @@ contract CarPooling {
         bookingsOfAUser[_carpoolingId][msg.sender]
             .nSlotBooked -= _nSlotsToCancel;
         idToPooling[_carpoolingId].slots += _nSlotsToCancel;
-        bookingsOfAUser[_carpoolingId][msg.sender].amountRefund +=
+        bookingsOfAUser[_carpoolingId][msg.sender].amountRefund =
             idToPooling[_carpoolingId].price *
             _nSlotsToCancel;
         (bool success, ) = msg.sender.call{
-             value: bookingsOfAUser[_carpoolingId][msg.sender].amountRefund
-         }("");
-         require(success, "Transfer failed");
-
+            value: bookingsOfAUser[_carpoolingId][msg.sender].amountRefund
+        }("");
+        require(success, "Transfer failed");
     }
 
     function completeRide(uint256 _carpoolingId) public payable {
@@ -178,13 +178,21 @@ contract CarPooling {
 
         idToPooling[_carpoolingId].carpoolingState = State.closed;
 
-        // if()
+        // calc 10% fee
+        uint256 fee = 100000000000000 / 10;
+
         (bool success, ) = idToPooling[_carpoolingId].owner.call{
-            value: (idToPooling[_carpoolingId].tslots -
+            value: ((idToPooling[_carpoolingId].tslots -
                 idToPooling[_carpoolingId].slots) *
-                idToPooling[_carpoolingId].price
+                idToPooling[_carpoolingId].price) + (100000000000000 - fee)
         }("");
         require(success, "Transfer failed");
+
+        // //send user's collateral minus fee
+        // (bool success, ) = idToPooling[_carpoolingId].owner.call{
+        //     value: refund
+        // }("");
+        // require(success, "Transfer failed");
 
         idToPooling[_carpoolingId].slots = 4;
 
@@ -225,9 +233,11 @@ contract CarPooling {
         return isServing[user];
     }
 
-    // function getOwnerbalance(address user) external view returns (uint256) {
-    //     return user.balance;
-    // }
+    function getUserAmountRefund(uint256 id, address user)
+        external
+        view
+        returns (uint256)
+    {
+        return bookingsOfAUser[id][user].amountRefund;
+    }
 }
-
-// 0x20775d300BdE943Ac260995E977fb915fB01f399
