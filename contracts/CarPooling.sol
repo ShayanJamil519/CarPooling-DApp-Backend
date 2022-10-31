@@ -153,6 +153,7 @@ contract CarPooling {
 
     function cancelBooking(uint256 _carpoolingId, uint8 _nSlotsToCancel)
         public
+        payable
     {
         if (bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked <= 0) {
             revert CarPooling__NoSlotBooked();
@@ -163,6 +164,11 @@ contract CarPooling {
         bookingsOfAUser[_carpoolingId][msg.sender].amountRefund +=
             idToPooling[_carpoolingId].price *
             _nSlotsToCancel;
+        (bool success, ) = msg.sender.call{
+             value: bookingsOfAUser[_carpoolingId][msg.sender].amountRefund
+         }("");
+         require(success, "Transfer failed");
+
     }
 
     function completeRide(uint256 _carpoolingId) public payable {
