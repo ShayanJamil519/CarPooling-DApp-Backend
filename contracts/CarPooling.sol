@@ -10,6 +10,7 @@ error CarPooling__BookingEnded();
 error CarPooling__SendMoreFunds();
 error CarPooling__AllSlotOccupied();
 error CarPooling__NoSlotBooked();
+error CarPooling__YouAreNotOwner();
 
 contract CarPooling {
     using Counters for Counters.Counter;
@@ -32,6 +33,7 @@ contract CarPooling {
         address payable owner;
         string origin;
         string destination;
+        uint256 tslots;
         uint256 slots;
         uint256 price;
         uint256 startTime;
@@ -55,7 +57,7 @@ contract CarPooling {
     Booking[] public cancelledBookings;
 
     /*mappings*/
-    mapping (uint256=>Booking[]) public poolingToBooking;
+    mapping(uint256 => Booking[]) public poolingToBooking;
 
     // check whether the current user is already giving service or not
     mapping(address => bool) private isServing;
@@ -93,6 +95,7 @@ contract CarPooling {
             payable(msg.sender),
             _origin,
             _destination,
+            _slots,
             _slots,
             _price,
             block.timestamp,
@@ -135,54 +138,90 @@ contract CarPooling {
 
         idToPooling[_carpoolingId].slots -= _nSlotsToBook;
         bookingsOfAUser[_carpoolingId][msg.sender].isCompleted = false;
-         (bool success, ) =  idToPooling[_carpoolingId].owner
-                .call{
-                value: msg.value
-            }("");
-            require(success, "Transfer failed");
+        // (bool success, ) = idToPooling[_carpoolingId].owner.call{
+        //     value: msg.value
+        // }("");
+        // require(success, "Transfer failed");
 
-
-            // confirmedBookings.push(bookingsOfAUser[_carpoolingId][msg.sender]);
-            poolingToBooking[_carpoolingId].push(bookingsOfAUser[_carpoolingId][msg.sender]);
+        // confirmedBookings.push(bookingsOfAUser[_carpoolingId][msg.sender]);
+        poolingToBooking[_carpoolingId].push(
+            bookingsOfAUser[_carpoolingId][msg.sender]
+        );
 
         // idToPooling[_carpoolingId].slots -= _nSlotsToBook;
     }
 
-
-    function cancelBooking(uint256 _carpoolingId, uint8 _nSlotsToCancel) public {        
-        if(bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked <= 0){
+    function cancelBooking(uint256 _carpoolingId, uint8 _nSlotsToCancel)
+        public
+    {
+        if (bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked <= 0) {
             revert CarPooling__NoSlotBooked();
-        }     
-        bookingsOfAUser[_carpoolingId][msg.sender].nSlotBooked -= _nSlotsToCancel;
+        }
+        bookingsOfAUser[_carpoolingId][msg.sender]
+            .nSlotBooked -= _nSlotsToCancel;
         idToPooling[_carpoolingId].slots += _nSlotsToCancel;
-        bookingsOfAUser[_carpoolingId][msg.sender].amountRefund += idToPooling[_carpoolingId].price * _nSlotsToCancel;
+        bookingsOfAUser[_carpoolingId][msg.sender].amountRefund +=
+            idToPooling[_carpoolingId].price *
+            _nSlotsToCancel;
     }
 
+    function completeRide(uint256 _carpoolingId) public payable {
+        if (idToPooling[_carpoolingId].owner != msg.sender) {
+            revert CarPooling__YouAreNotOwner();
+        }
 
+        idToPooling[_carpoolingId].carpoolingState = State.closed;
 
+        // if()
+        (bool success, ) = idToPooling[_carpoolingId].owner.call{
+            value: (idToPooling[_carpoolingId].tslots -
+                idToPooling[_carpoolingId].slots) *
+                idToPooling[_carpoolingId].price
+        }("");
+        require(success, "Transfer failed");
 
+        idToPooling[_carpoolingId].slots = 4;
 
+        isServing[msg.sender] = false;
+    }
 
     /*getters*/
 
-function getIsServing(address _carPooler) external view returns(bool){
-    return isServing[_carPooler];
+    function getIsServing(address _carPooler) external view returns (bool) {
+        return isServing[_carPooler];
+    }
+
+    function getIdToPooling(uint256 _carpoolId)
+        external
+        view
+        returns (Pooling memory)
+    {
+        return idToPooling[_carpoolId];
+    }
+
+    function getBookingsOfAUser(uint256 _carpoolId, address _user)
+        external
+        view
+        returns (Booking memory)
+    {
+        return bookingsOfAUser[_carpoolId][_user];
+    }
+
+    function getAllconfirmedBookings(uint256 _carpoolId)
+        external
+        view
+        returns (Booking[] memory)
+    {
+        return poolingToBooking[_carpoolId];
+    }
+
+    function servingState(address user) external view returns (bool) {
+        return isServing[user];
+    }
+
+    // function getOwnerbalance(address user) external view returns (uint256) {
+    //     return user.balance;
+    // }
 }
 
-function getIdToPooling(uint256 _carpoolId) external view returns(Pooling memory){
-    return idToPooling[_carpoolId];
-}
-
-function getBookingsOfAUser(uint256 _carpoolId, address _user) external view returns(Booking memory){
-    return bookingsOfAUser[_carpoolId][_user];
-}
-
-function getAllconfirmedBookings(uint256 _carpoolId) external view returns(Booking[] memory){
-
-      return poolingToBooking[_carpoolId];
-}
-
-
-}
-
-// 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
+// 0x20775d300BdE943Ac260995E977fb915fB01f399
