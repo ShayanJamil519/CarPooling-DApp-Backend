@@ -85,7 +85,7 @@ contract CarPooling {
         }
 
         require(
-            msg.value == 1e14,
+            msg.value >= 1e14,
             "to start service you need deposit 1e14 ethers collateral amount"
         );
 
