@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
@@ -56,20 +56,20 @@ contract CarPooling is ERC721URIStorage {
   }
 
   // Booking[] public confirmedBookings; //Keeps a track of current pending orders.
-  Booking[] public cancelledBookings;
+  // Booking[] public cancelledBookings;
 
   /*mappings*/
-  mapping(uint256 => Booking[]) public poolingToBooking;
+  mapping(uint256 => Booking[]) private poolingToBooking;
 
   // check whether the current user is already giving service or not
   mapping(address => bool) private isServing;
 
   // map pooling service with carpoolingId
-  mapping(uint256 => Pooling) public idToPooling;
+  mapping(uint256 => Pooling) private idToPooling;
 
   // Pooling[] public poolingServices;
 
-  mapping(uint256 => mapping(address => Booking)) public bookingsOfAUser;
+  mapping(uint256 => mapping(address => Booking)) private bookingsOfAUser;
 
   /*functions*/
 
@@ -80,19 +80,27 @@ contract CarPooling is ERC721URIStorage {
     string memory _origin,
     string memory _destination,
     uint256 _slots,
-    uint256 _price
-  ) public payable {
+    uint256 _price,
+    string memory tokenURI
+  ) public payable returns (uint256) {
     if (isServing[msg.sender] == true) {
       revert CarPooling__AlreadyServing();
     }
 
-    require(
-      msg.value >= 1e14,
-      "to start service you need deposit 1e14 ethers collateral amount"
-    );
+    // require(
+    //   msg.value >= 1e14,
+    //   "to start service you need deposit 1e14 ethers collateral amount"
+    // );
 
     _carpoolingIds.increment();
     uint256 newCarpoolId = _carpoolingIds.current();
+
+    //Mint the Carpool Token with tokenId newCarpoolId to the address who called createCarpool Token
+    _safeMint(msg.sender, newCarpoolId);
+
+    //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
+    _setTokenURI(newCarpoolId, tokenURI);
+
     Pooling memory newPoolingService = Pooling(
       newCarpoolId,
       payable(msg.sender),
@@ -110,21 +118,23 @@ contract CarPooling is ERC721URIStorage {
 
     // pooling owner start his service
     isServing[msg.sender] = true;
+
+    return newCarpoolId;
   }
 
-  function createCarPoolToken(string memory tokenURI) public returns (uint256) {
-    //Increment the tokenId counter, which is keeping track of the number of minted NFTs
-    _carpoolingIds.increment();
-    uint256 newCarpoolTokenId = _carpoolingIds.current();
+  // function createCarPoolToken(string memory tokenURI) public returns (uint256) {
+  //   //Increment the tokenId counter, which is keeping track of the number of minted NFTs
+  //   _carpoolingIds.increment();
+  //   uint256 newCarpoolTokenId = _carpoolingIds.current();
 
-    //Mint the NFT with tokenId newTokenId to the address who called createToken
-    _safeMint(msg.sender, newCarpoolTokenId);
+  //   //Mint the NFT with tokenId newTokenId to the address who called createToken
+  //   _safeMint(msg.sender, newCarpoolTokenId);
 
-    //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
-    _setTokenURI(newCarpoolTokenId, tokenURI);
+  //   //Map the tokenId to the tokenURI (which is an IPFS URL with the NFT metadata)
+  //   _setTokenURI(newCarpoolTokenId, tokenURI);
 
-    return newCarpoolTokenId;
-  }
+  //   return newCarpoolTokenId;
+  // }
 
   function BookCarpooling(uint256 _carpoolingId, uint8 _nSlotsToBook)
     public
@@ -215,6 +225,14 @@ contract CarPooling is ERC721URIStorage {
   }
 
   /*getters*/
+
+  function getPoolingToBooking(uint256 _carPooler)
+    external
+    view
+    returns (Booking[] memory)
+  {
+    return poolingToBooking[_carPooler];
+  }
 
   function getIsServing(address _carPooler) external view returns (bool) {
     return isServing[_carPooler];

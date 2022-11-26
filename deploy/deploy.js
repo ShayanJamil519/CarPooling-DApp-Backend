@@ -7,10 +7,10 @@ module.exports = async({ getNamedAccounts, deployments }) => {
     const { deployer } = await getNamedAccounts();
 
     log("----------------------------------------------------");
-    const args = [];
-    const nftMarketplace = await deploy("CarPooling", {
+    const arguments = [];
+    const carPoolContract = await deploy("CarPooling", {
         from: deployer,
-        args: args,
+        args: arguments,
         log: true,
         waitConfirmations: network.config.blockConfirmations || 1,
     });
@@ -20,7 +20,7 @@ module.exports = async({ getNamedAccounts, deployments }) => {
         process.env.ETHERSCAN_API_KEY
     ) {
         log("Verifying...");
-        await verify(nftMarketplace.address, args);
+        await verify(carPoolContract.address, arguments);
     }
     log("----------------------------------------------------");
 };
